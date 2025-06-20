@@ -17,7 +17,7 @@ The AWS CloudFormation Stack can be created using 2 methods: (1) Using Template 
 1. Create Stack using AWS CloudFormation:
 
    - Choose **Launch Stack** and (if prompted) log into your AWS account:
-     [![Launch Stack](assets/LaunchStack.png)]()
+     [![Launch Stack](assets/LaunchStack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-13353/yolov8-pytorch-cfn-template.yaml)
    - Select a unique Stack Name, ackowledge creation of IAM resources, create the stack and wait for a few minutes for it to be successfully deployed
      1. ![Step1_StackName](assets/Step1_StackName.png)
      2. ![Step2_StackIAM](assets/Step2_StackIAM.png)
@@ -35,6 +35,8 @@ $ cdk synth
 $ cdk bootstrap
 $ cdk deploy
 ```
+
+Windows:
 
 py -m venv .venv
 
