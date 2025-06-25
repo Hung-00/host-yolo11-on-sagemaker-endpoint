@@ -18,7 +18,7 @@ account = Aws.ACCOUNT_ID
 # 2. Create SageMaker Notebook and use GitHub as Source
 
 
-class YOLOv8SageMakerStack(Stack):
+class YOLO11SageMakerStack(Stack):
     """
     The SageMaker Notebook is used to deploy the custom model on a SageMaker endpoint and test it.
     """
@@ -29,7 +29,7 @@ class YOLOv8SageMakerStack(Stack):
         ## Create S3 bucket
         self.bucket = s3.Bucket(
             self,
-            "yolov8-s3",
+            "yolo11-s3",
             auto_delete_objects=True,
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
@@ -38,15 +38,15 @@ class YOLOv8SageMakerStack(Stack):
         # Create role for Notebook instance
         nRole = iam.Role(
             self,
-            "yolov8-notebookAccessRole",
+            "yolo11-notebookAccessRole",
             assumed_by=iam.ServicePrincipal("sagemaker"),
         )
 
         # Attach the right policies for SageMaker Notebook instance
         nPolicy = iam.Policy(
             self,
-            "yolov8-notebookAccessPolicy",
-            policy_name="yolov8-notebookAccessPolicy",
+            "yolo11-notebookAccessPolicy",
+            policy_name="yolo11-notebookAccessPolicy",
             statements=[
                 iam.PolicyStatement(actions=["sagemaker:*"], resources=["*"]),
                 iam.PolicyStatement(
@@ -64,18 +64,18 @@ class YOLOv8SageMakerStack(Stack):
         ).attach_to_role(nRole)
 
         ## Create SageMaker Notebook instances cluster
-        nid = "yolov8-sm-notebook"
+        nid = "yolo11-sm-notebook"
         notebook = sagemaker.CfnNotebookInstance(
             self,
             nid,
-            instance_type="ml.m5.4xlarge",
+            instance_type="ml.c5.xlarge",
             volume_size_in_gb=5,
             notebook_instance_name=nid,
             role_arn=nRole.role_arn,
-            additional_code_repositories=[
-                "https://github.com/aws-samples/host-yolov8-on-sagemaker-endpoint"
-            ],
             # additional_code_repositories=[
-            #     "https://github.com/Hung-00/host-yolov8-on-sagemaker-endpoint"
+            #     "https://github.com/aws-samples/host-yolov8-on-sagemaker-endpoint"
             # ],
+            additional_code_repositories=[
+                "https://github.com/Hung-00/host-yolov8-on-sagemaker-endpoint"
+            ],
         )
