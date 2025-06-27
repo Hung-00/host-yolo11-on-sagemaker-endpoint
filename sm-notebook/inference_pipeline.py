@@ -31,15 +31,10 @@ def convert_shelf_assignments_to_json(assignments):
             else:
                 brand_counts[brand] = 1
 
-        shelf_info = {}
-        for brand, count in brand_counts.items():
-            shelf_info = {
-                "shelf": shelf_num,
-                "products": [{
-                    "brand": brand,
-                    "total": count
-                }]
-            }
+        shelf_info = {
+            "shelf": shelf_num,
+            "products": [{"brand": brand, "total": count} for brand, count in brand_counts.items()]
+        }
         output.append(shelf_info)
     return json.dumps(output, indent=2)
 
@@ -54,7 +49,7 @@ shelf_class = 3
 
 # Load the best model we have so far:
 # model_file = "./runs/detect/train5/weights/best.pt"
-model_file = "epoch400.pt"
+model_file = "epoch200.pt"
 
 model = YOLO(model_file)
 
