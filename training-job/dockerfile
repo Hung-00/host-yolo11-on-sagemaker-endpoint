@@ -1,0 +1,67 @@
+#     albumentationsx \
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
+
+# Set timezone to avoid interactive prompt
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    python3-pip \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgl1-mesa-glx \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Create requirements.txt with pinned versions
+RUN echo "numpy==1.24.4\n\
+sagemaker-training\n\
+ultralytics==8.3.170\n\
+albumentationsx\n\
+opencv-python-headless==4.9.0.80\n\
+pillow==10.1.0\n\
+pandas==2.0.3\n\
+matplotlib==3.7.2\n\
+seaborn==0.12.2\n\
+tqdm==4.66.1\n\
+pyyaml==6.0.1\n\
+scipy==1.10.1" > /requirements.txt
+
+# Install all dependencies at once
+RUN pip install -r /requirements.txt
+
+# Set up the working directory
+WORKDIR /opt/ml/code
+
+# Copy training script
+COPY train.py /opt/ml/code/train.py
+COPY debug.py /opt/ml/code/debug.py
+
+# Set the entrypoint to the training script
+ENV SAGEMAKER_PROGRAM train.py
+
+
+# ---------------------
+# FROM ultralytics/ultralytics:latest-python
+
+# RUN apt-get update
+
+# # Install SageMaker Training Toolkit
+# RUN pip install sagemaker-training
+
+# # Set up the working directory
+# WORKDIR /opt/ml/code
+
+# # Copy training script
+# COPY train.py /opt/ml/code/train.py
+
+# # Set the entrypoint to the training script
+# ENV SAGEMAKER_PROGRAM train.py
