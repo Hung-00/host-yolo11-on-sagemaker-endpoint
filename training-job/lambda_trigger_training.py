@@ -54,10 +54,8 @@ def lambda_handler(event, context):
         # Get environment variables
         # role_arn = os.environ['SAGEMAKER_ROLE_ARN']
         # ecr_image = os.environ['ECR_IMAGE_URI']
-        role_arn = "arn:aws:iam::151182331915:role/training_job_role"
-        ecr_image = (
-            "151182331915.dkr.ecr.ap-southeast-1.amazonaws.com/yolo11-training:latest"
-        )
+        role_arn = "arn:aws:iam:::role/training_job_role"
+        ecr_image = ".dkr.ecr.ap-southeast-1.amazonaws.com/yolo11-training:latest"
 
         # Create unique job name
         job_name = f"yolo11x-training-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
