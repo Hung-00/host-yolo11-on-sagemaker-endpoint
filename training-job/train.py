@@ -12,7 +12,6 @@ import traceback
 import boto3
 from datetime import datetime
 
-# Setup logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -46,16 +45,6 @@ def parse_args():
         default=os.environ.get("SM_OUTPUT_DATA_DIR", "/opt/ml/output/data"),
     )
 
-    # S3 bucket for results (can be passed as hyperparameter or environment variable)
-    parser.add_argument(
-        "--results-s3-bucket", type=str, default=os.environ.get("RESULTS_S3_BUCKET", "")
-    )
-    parser.add_argument(
-        "--results-s3-prefix",
-        type=str,
-        default=os.environ.get("RESULTS_S3_PREFIX", "yolo-training-results"),
-    )
-
     # YOLO training hyperparameters
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -65,70 +54,12 @@ def parse_args():
         "--device", type=str, default="0" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--project", type=str, default="/opt/ml/output")
-    parser.add_argument("--name", type=str, default="yolo11x_training")
+    parser.add_argument("--name", type=str, default="yolo11x")
     parser.add_argument("--exist-ok", type=bool, default=True)
     parser.add_argument("--pretrained", type=bool, default=True)
     parser.add_argument("--resume", type=bool, default=False)
 
     return parser.parse_args()
-
-
-def upload_results_to_s3(results_dir, bucket_name, prefix):
-    """Upload training results (images and files) to S3"""
-    try:
-        if not bucket_name:
-            logger.warning("No S3 bucket specified for results upload")
-            return
-
-        s3_client = boto3.client("s3")
-
-        # Add timestamp to prefix to avoid overwriting
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        full_prefix = f"{prefix}/{timestamp}"
-
-        uploaded_files = []
-
-        # Walk through results directory
-        for root, dirs, files in os.walk(results_dir):
-            for file in files:
-                # Upload images and important result files
-                if file.endswith((".png", ".jpg", ".jpeg", ".csv", ".txt", ".yaml")):
-                    local_path = os.path.join(root, file)
-                    # Create S3 key maintaining directory structure
-                    relative_path = os.path.relpath(local_path, results_dir)
-                    s3_key = f"{full_prefix}/{relative_path}"
-
-                    try:
-                        s3_client.upload_file(local_path, bucket_name, s3_key)
-                        uploaded_files.append(s3_key)
-                        logger.info(f"Uploaded {file} to s3://{bucket_name}/{s3_key}")
-                    except Exception as e:
-                        logger.error(f"Failed to upload {file}: {str(e)}")
-
-        # Create a manifest file
-        manifest = {
-            "timestamp": timestamp,
-            "training_completed": datetime.now().isoformat(),
-            "uploaded_files": uploaded_files,
-            "total_files": len(uploaded_files),
-        }
-
-        manifest_key = f"{full_prefix}/manifest.json"
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=manifest_key,
-            Body=json.dumps(manifest, indent=2),
-            ContentType="application/json",
-        )
-
-        logger.info(f"Results uploaded to S3. Total files: {len(uploaded_files)}")
-        logger.info(f"Manifest: s3://{bucket_name}/{manifest_key}")
-
-        return f"s3://{bucket_name}/{full_prefix}"
-
-    except Exception as e:
-        logger.error(f"Error uploading results to S3: {str(e)}")
-        logger.error(traceback.format_exc())
 
 
 def detect_dataset_structure(base_path):
@@ -167,8 +98,8 @@ def prepare_dataset(train_path, val_path):
         possible_yaml_locations = [
             os.path.join(train_path, "dataset.yaml"),
             os.path.join(train_path, "../dataset.yaml"),
-            os.path.join("/opt/ml/input/data", "dataset.yaml"),
-            os.path.join("/opt/ml/input/data/train", "dataset.yaml"),
+            # os.path.join("/opt/ml/input/data", "dataset.yaml"),
+            # os.path.join("/opt/ml/input/data/train", "dataset.yaml"),
         ]
 
         dataset_yaml_path = None
@@ -178,6 +109,7 @@ def prepare_dataset(train_path, val_path):
                 dataset_yaml_path = yaml_path
                 break
 
+        # !!!!!!!!!!!!!!!!!!!!!!!
         if dataset_yaml_path:
             # Load and log existing configuration
             with open(dataset_yaml_path, "r") as f:
@@ -308,22 +240,32 @@ def train():
         else:
             logger.error("No model weights found to save!")
 
+        # Copy code to model
+        os.makedirs(os.path.join(args.model_dir, "code"), exist_ok=True)
+
+        code_infer_path = Path("/opt/ml/code") / "inference.py"
+        code_requirements_path = Path("/opt/ml/code") / "requirements.txt"
+        shutil.copy(
+            str(code_infer_path), os.path.join(args.model_dir, "code/inference.py")
+        )
+        shutil.copy(
+            str(code_requirements_path),
+            os.path.join(args.model_dir, "code/requirements.txt"),
+        )
+
         # Upload results to S3
         results_dir = Path(args.project) / args.name
         if results_dir.exists():
             logger.info("Uploading training results to S3...")
-            s3_location = upload_results_to_s3(
-                str(results_dir), args.results_s3_bucket, args.results_s3_prefix
-            )
 
-            # Also copy important result files to SageMaker output
             result_files = [
                 "results.png",
                 "confusion_matrix.png",
-                "F1_curve.png",
-                "P_curve.png",
-                "R_curve.png",
-                "PR_curve.png",
+                "confusion_matrix_normalized.png",
+                "BoxF1_curve.png",
+                "BoxP_curve.png",
+                "BoxR_curve.png",
+                "BoxPR_curve.png",
                 "labels.jpg",
                 "labels_correlogram.jpg",
                 "results.csv",
@@ -340,7 +282,6 @@ def train():
         metrics = {
             "final_epoch": args.epochs,
             "training_completed": True,
-            "results_s3_location": s3_location if "s3_location" in locals() else None,
         }
 
         with open(os.path.join(args.output_data_dir, "metrics.json"), "w") as f:
