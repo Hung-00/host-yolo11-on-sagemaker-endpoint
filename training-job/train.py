@@ -193,6 +193,7 @@ def train():
         os.makedirs(args.model_dir, exist_ok=True)
         os.makedirs(args.output_data_dir, exist_ok=True)
         os.makedirs(args.project, exist_ok=True)
+        os.makedirs(os.path.join(args.model_dir, "code"), exist_ok=True)
 
         # Prepare dataset
         dataset_yaml = prepare_dataset(args.train, args.validation)
@@ -240,9 +241,6 @@ def train():
         else:
             logger.error("No model weights found to save!")
 
-        # Copy code to model
-        os.makedirs(os.path.join(args.model_dir, "code"), exist_ok=True)
-
         code_infer_path = Path("/opt/ml/code") / "inference.py"
         code_requirements_path = Path("/opt/ml/code") / "requirements.txt"
         shutil.copy(
@@ -278,10 +276,26 @@ def train():
                     shutil.copy(str(src_path), dst_path)
                     logger.info(f"Copied {file} to output directory")
 
+        val_metrics = model.val(
+            data=dataset_yaml,
+            project=args.project,
+            name=args.name,
+            imgsz=640,
+            batch=10,
+            conf=0.55,
+            iou=0.75,
+        )  # no arguments needed, dataset and settings remembered
+
         # Save training metrics
         metrics = {
             "final_epoch": args.epochs,
             "training_completed": True,
+            "mAP50-95": val_metrics.box.map,
+            "mAP50": val_metrics.box.map50,
+            "mAP75": val_metrics.box.map75,
+            "mAP50-95_all_classes": str(val_metrics.box.maps),
+            "mean_precision_all_classes": val_metrics.box.mp,
+            "mean_recall_all_classes": val_metrics.box.mr,
         }
 
         with open(os.path.join(args.output_data_dir, "metrics.json"), "w") as f:
@@ -297,3 +311,13 @@ def train():
 
 if __name__ == "__main__":
     train()
+
+
+# YOLO11x summary: 357 layers, 56,878,396 parameters, 56,878,380 gradients, 195.5 GFLOPs
+
+# YOLO11x summary (fused): 190 layers, 56,831,644 parameters, 0 gradients, 194.4 GFLOPs
+
+# /opt/ml/model/
+# /opt/ml/output/data/
+# Everything in this directory gets uploaded to S3
+# This is where you should save your trained model artifacts

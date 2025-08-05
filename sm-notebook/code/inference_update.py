@@ -12,21 +12,49 @@ def model_fn(model_dir):
 
 def input_fn(request_body, request_content_type):
     print("Executing input_fn from inference.py ...")
-    if request_content_type:
-        jpg_original = base64.b64decode(request_body)
+    if request_content_type == "text/csv":
+        # Split the request body by comma to get image and parameters
+        parts = request_body.split(",")
+
+        # First part is the base64 image
+        image_b64 = parts[0]
+
+        # Default values
+        conf = 0.25
+        iou = 0.7
+
+        # Parse additional parameters if provided
+        if len(parts) > 1:
+            conf = float(parts[1])
+        if len(parts) > 2:
+            iou = float(parts[2])
+
+        # Decode the image
+        jpg_original = base64.b64decode(image_b64)
         jpg_as_np = np.frombuffer(jpg_original, dtype=np.uint8)
         img = cv2.imdecode(jpg_as_np, flags=-1)
+
+        return {"image": img, "conf": conf, "iou": iou}
     else:
         raise Exception("Unsupported content type: " + request_content_type)
-    return img
 
 
 def predict_fn(input_data, model):
     print("Executing predict_fn from inference.py ...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
+
     with torch.no_grad():
-        result = model(input_data, conf=0.25)
+        # Extract image and parameters
+        img = input_data["image"]
+        conf = input_data["conf"]
+        iou = input_data["iou"]
+
+        print(f"Running inference with conf={conf}, iou={iou}")
+
+        # Run inference with parameters
+        result = model(img, conf=conf, iou=iou)
+
     return result
 
 

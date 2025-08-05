@@ -43,6 +43,9 @@ WORKDIR /opt/ml/code
 # Copy training script
 COPY train.py /opt/ml/code/train.py
 COPY debug.py /opt/ml/code/debug.py
+COPY code/inference.py /opt/ml/code/inference.py
+COPY code/requirements.txt /opt/ml/code/requirements.txt
+
 
 # Set the entrypoint to the training script
 ENV SAGEMAKER_PROGRAM train.py

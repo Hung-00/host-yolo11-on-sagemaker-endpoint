@@ -1,0 +1,9 @@
+path: /opt/ml/input/data
+train: train
+val: validation
+nc: 4
+names:
+  0: abben
+  1: boncha
+  2: joco
+  3: shelf
