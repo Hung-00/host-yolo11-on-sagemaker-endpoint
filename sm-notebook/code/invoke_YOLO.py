@@ -10,7 +10,7 @@ payload = base64.b64encode(jpeg).decode("utf-8")
 
 conf = 0.85
 iou = 0.8
-payload = f"{payload},{conf},{iou}"
+payload = f"{payload}|{conf}|{iou}"
 
 runtime = boto3.client("runtime.sagemaker")
 response = runtime.invoke_endpoint(

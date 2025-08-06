@@ -14,7 +14,7 @@ def input_fn(request_body, request_content_type):
     print("Executing input_fn from inference.py ...")
     if request_content_type == "text/csv":
         # Split the request body by comma to get image and parameters
-        parts = request_body.split(",")
+        parts = request_body.split("|")
 
         # First part is the base64 image
         image_b64 = parts[0]
